@@ -48,7 +48,7 @@ fn drawDebugCoords() !void {
 
 fn drawBoard() !void {
     const frameOutline = rl.Rectangle.init(@floatFromInt(startX), @floatFromInt(startY), BSIZE * NCOLS, BSIZE * NROWS);
-    rl.drawRectangleLinesEx(frameOutline, 3.0, rl.Color.gray);
+    rl.drawRectangleLinesEx(frameOutline, 3.0, rl.Color.light_gray);
 
     for (0..NROWS) |_i| {
         for (0..NCOLS) |_j| {
@@ -60,9 +60,10 @@ fn drawBoard() !void {
                 BSIZE,
                 BSIZE,
             );
-            rl.drawRectangleLinesEx(square, 1.0, rl.Color.gray);
+            rl.drawRectangleLinesEx(square, 1.0, rl.Color.light_gray);
             if (board[i][j] != 0) {
                 rl.drawRectangleRec(square, tt.tetrominoes[board[i][j] - 1].color);
+                rl.drawRectangleLinesEx(square, 1.0, rl.Color.gray);
             }
         }
     }
@@ -126,6 +127,7 @@ fn drawActivePiece() !void {
 
             const square = rl.Rectangle.init(@floatFromInt(startX + BSIZE * @as(i32, boardX)), @floatFromInt(startY + BSIZE * @as(i32, boardY)), BSIZE, BSIZE);
             rl.drawRectangleRec(square, color);
+            rl.drawRectangleLinesEx(square, 1.0, rl.Color.light_gray);
         }
     }
 }
@@ -163,6 +165,13 @@ fn checkCollision() !bool {
             if (boardRow >= NROWS) return true;
             if (board[@intCast(boardRow)][@intCast(boardCol)] != 0) return true;
         }
+    }
+    return false;
+}
+
+fn CheckIfLost() !bool {
+    for (board[0]) |bl| {
+        if (bl != 0) return true;
     }
     return false;
 }
@@ -452,6 +461,10 @@ pub fn main() anyerror!void {
 
         try updateGravity(dt);
         try handleInput(dt);
+
+        if (try CheckIfLost()) {
+            board = std.mem.zeroes([NROWS][NCOLS]u8);
+        }
         try drawBoard();
         try drawNextPiece();
         try drawReservePiece();
