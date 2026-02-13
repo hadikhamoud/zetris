@@ -29,6 +29,23 @@ fn drawDebugCoords(screenHeight: i32, screenWidth: i32) !void {
 }
 
 pub fn main() anyerror!void {
+    var arena: std.heap.ArenaAllocator = .init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const debug: bool = blk: {
+        const val = std.process.getEnvVarOwned(allocator, "DEBUG") catch |err| switch (err) {
+            error.EnvironmentVariableNotFound => break :blk false,
+            else => return err,
+        };
+        defer allocator.free(val);
+
+        if (std.mem.eql(u8, val, "1"))
+            break :blk true
+        else
+            break :blk false;
+    };
+
     rl.initWindow(0, 0, "zetris");
 
     const screenHeight = rl.getScreenHeight() - GENERAL_PADDING;
@@ -50,7 +67,7 @@ pub fn main() anyerror!void {
         defer rl.endDrawing();
 
         rl.clearBackground(.black);
-        try drawDebugCoords(screenHeight, screenWidth);
+        if (debug) try drawDebugCoords(screenHeight, screenWidth);
         //const frameOutline = rl.Rectangle.init(@floatFromInt(startX), @floatFromInt(startY), @floatFromInt(screenWidth - (startX * 2)) , @floatFromInt(screenHeight - (startY * 2)));
         const frameOutline = rl.Rectangle.init(@floatFromInt(startX), @floatFromInt(startY), 300, 600);
         rl.drawRectangleLinesEx(frameOutline, 3.0, rl.Color.gray);
@@ -68,8 +85,5 @@ pub fn main() anyerror!void {
                 rl.drawRectangleLinesEx(square, 1.0, rl.Color.dark_gray);
             }
         }
-
-        var buf: [32]u8 = undefined;
-        rl.drawText(try std.fmt.bufPrintZ(&buf, "{}x{}", .{ screenWidth - (startX * 2), screenHeight - (startY * 2) }), @divFloor(screenWidth, 2), @divFloor(screenHeight, 2), 4, .red);
     }
 }
