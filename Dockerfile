@@ -1,21 +1,24 @@
 # ============================================================
 # Stage 1: Build Zig + Emscripten → WASM
 # ============================================================
-FROM debian:bookworm-slim AS builder
+FROM alpine:3.21 AS builder
 
 ARG ZIG_VERSION=0.15.2
 ARG EMSDK_VERSION=4.0.9
 
-# Install dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install dependencies (Alpine packages)
+RUN apk add --no-cache \
     ca-certificates \
     curl \
-    xz-utils \
+    xz \
     git \
     python3 \
-    && rm -rf /var/lib/apt/lists/*
+    bash \
+    nodejs \
+    gcompat
 
 # Install Zig (note: 0.15+ uses arch-os naming convention)
+# Zig is statically linked so it works on Alpine with gcompat for any libc shims
 RUN curl -L "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz" \
     | tar -xJ -C /opt \
     && ln -s /opt/zig-x86_64-linux-${ZIG_VERSION}/zig /usr/local/bin/zig
