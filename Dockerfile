@@ -21,15 +21,18 @@ WORKDIR /app
 COPY . .
 
 # Zig's raylib dependency uses zemscripten which runs "emsdk install 4.0.3"
-# from its own cached emsdk copy. That tries to download node-v20.18.0 from
-# Google Cloud Storage which returns 403. Fix: fetch Zig deps first, then
-# pre-populate the node directory in the cached emsdk so it skips the download.
+# from its own cached emsdk copy. That download hits 403 on storage.googleapis.com.
+# Fix: fetch Zig deps first, then symlink the pre-installed emsdk toolchain
+# (from the emscripten/emsdk Docker image) into the Zig cache so emsdk's
+# is_installed() checks pass and it skips all downloads.
 ENV ZIG_EMSDK_CACHE="/root/.cache/zig/p/N-V-__8AAJl1DwBezhYo_VE6f53mPVm00R-Fk28NPW7P14EQ"
 RUN zig build -Dtarget=wasm32-emscripten -Doptimize=ReleaseSmall --fetch \
     && mkdir -p "${ZIG_EMSDK_CACHE}/node/20.18.0_64bit/bin" \
-    && ln -s "$(which node)" "${ZIG_EMSDK_CACHE}/node/20.18.0_64bit/bin/node"
+    && ln -s "$(which node)" "${ZIG_EMSDK_CACHE}/node/20.18.0_64bit/bin/node" \
+    && rm -rf "${ZIG_EMSDK_CACHE}/upstream" \
+    && ln -s /emsdk/upstream "${ZIG_EMSDK_CACHE}/upstream"
 
-# Now the actual build — emsdk will see node as "already installed" and skip download
+# Now the actual build — emsdk sees node + upstream as "already installed"
 RUN zig build -Dtarget=wasm32-emscripten -Doptimize=ReleaseSmall
 
 # ============================================================
