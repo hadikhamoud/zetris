@@ -37,7 +37,7 @@ pub fn build(b: *std.Build) !void {
             .optimize = optimize,
             .flags = emcc_flags,
             .settings = emcc_settings,
-            .shell_file_path = emsdk.shell(raylib_dep.builder),
+            .shell_file_path = b.path("src/minshell.html"),
             .install_dir = install_dir,
             .embed_paths = &.{.{ .src_path = "resources/" }},
         });

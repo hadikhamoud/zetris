@@ -1,8 +1,11 @@
 const rl = @import("raylib");
 const std = @import("std");
+const builtin = @import("builtin");
 const tt = @import("tetrominoes.zig");
 
-const GENERAL_PADDING = 100;
+const is_emscripten = builtin.os.tag == .emscripten;
+
+const GENERAL_PADDING = 0;
 const BSIZE = 30;
 const BSIZE_HALF = @divFloor(BSIZE, 2);
 const NROWS = 20;
@@ -18,11 +21,13 @@ var shadowPiece: ActivePiece = undefined;
 var nextPiece: ActivePiece = undefined;
 var hasNextPiece: bool = false;
 var reservePiece: ?ActivePiece = null;
+var linesCleared: u32 = 0;
 var reserveUsed = false;
 var fallTimer: f32 = 0.0;
-const fallDelay = 1.5;
+const fallDelay = 0.15;
 var moveTimer: f32 = 0.0;
 const moveDelay = 0.1;
+var lockPieceDelay = 3;
 
 var board = std.mem.zeroes([NROWS][NCOLS]u8);
 
@@ -84,7 +89,12 @@ fn drawReservePiece() !void {
             const row = @as(i32, @intCast(_row));
             const col = @as(i32, @intCast(_col));
 
-            const square = rl.Rectangle.init(@floatFromInt(startX - 325 + BSIZE_HALF * row), @floatFromInt(startY + 50 + BSIZE_HALF * col), @divFloor(BSIZE, 2), @divFloor(BSIZE, 2));
+            const square = rl.Rectangle.init(
+                @floatFromInt(startX - 325 + BSIZE_HALF * row),
+                @floatFromInt(startY + 50 + BSIZE_HALF * col),
+                @divFloor(BSIZE, 2),
+                @divFloor(BSIZE, 2),
+            );
             rl.drawRectangleRec(square, color);
         }
     }
@@ -106,10 +116,34 @@ fn drawNextPiece() !void {
             const row = @as(i32, @intCast(_row));
             const col = @as(i32, @intCast(_col));
 
-            const square = rl.Rectangle.init(@floatFromInt(startX + 375 + BSIZE_HALF * row), @floatFromInt(startY + 50 + BSIZE_HALF * col), @divFloor(BSIZE, 2), @divFloor(BSIZE, 2));
+            const square = rl.Rectangle.init(
+                @floatFromInt(startX + 375 + BSIZE_HALF * row),
+                @floatFromInt(startY + 50 + BSIZE_HALF * col),
+                @divFloor(BSIZE, 2),
+                @divFloor(BSIZE, 2),
+            );
             rl.drawRectangleRec(square, color);
         }
     }
+}
+
+fn drawLinesCleared() !void {
+    var buf: [32]u8 = undefined;
+    rl.drawText(
+        try std.fmt.bufPrintZ(&buf, "{}", .{linesCleared}),
+        startX + 350,
+        startY + BSIZE * 7,
+        18.0,
+        rl.Color.gray,
+    );
+    rl.drawText("", startX + 350, startY + BSIZE * 8, 18.0, rl.Color.gray);
+    rl.drawText(
+        "Lines Cleared",
+        startX + 350,
+        startY + BSIZE * 8,
+        18.0,
+        rl.Color.gray,
+    );
 }
 
 fn drawActivePiece() !void {
@@ -211,16 +245,26 @@ fn lockPiece() !void {
 fn getNewPiece() !void {
     var prng: std.Random.DefaultPrng = .init(blk: {
         var seed: u64 = undefined;
-        try std.posix.getrandom(std.mem.asBytes(&seed));
+        std.crypto.random.bytes(std.mem.asBytes(&seed));
         break :blk seed;
     });
     const rand = prng.random();
     if (hasNextPiece) {
         activePiece = nextPiece;
     } else {
-        activePiece = ActivePiece{ .rotation = rand.intRangeAtMost(u8, 0, 3), .tType = rand.intRangeAtMost(u8, 0, 6), .x = 0, .y = 0 };
+        activePiece = ActivePiece{
+            .rotation = rand.intRangeAtMost(u8, 0, 3),
+            .tType = rand.intRangeAtMost(u8, 0, 6),
+            .x = 0,
+            .y = 0,
+        };
     }
-    nextPiece = ActivePiece{ .rotation = rand.intRangeAtMost(u8, 0, 3), .tType = rand.intRangeAtMost(u8, 0, 6), .x = 0, .y = 0 };
+    nextPiece = ActivePiece{
+        .rotation = rand.intRangeAtMost(u8, 0, 3),
+        .tType = rand.intRangeAtMost(u8, 0, 6),
+        .x = 0,
+        .y = 0,
+    };
     hasNextPiece = true;
     reserveUsed = false;
 }
@@ -298,6 +342,7 @@ fn ClearRows() !void {
             }
             board[0] = std.mem.zeroes([NCOLS]u8);
             row += 1;
+            linesCleared += 1;
         }
     }
 }
@@ -363,6 +408,7 @@ fn ReservePiece() !void {
         try getNewPiece();
     }
 
+    activePiece.y = 0;
     reserveUsed = true;
 }
 
@@ -394,7 +440,7 @@ fn handleInput(dt: f32) !void {
                 try HardDrop();
                 moveTimer = 0;
             },
-            rl.KeyboardKey.space => {
+            rl.KeyboardKey.space, rl.KeyboardKey.x => {
                 try ReservePiece();
                 moveTimer = 0;
             },
@@ -418,37 +464,45 @@ fn handleInput(dt: f32) !void {
 }
 
 pub fn main() anyerror!void {
-    var arena: std.heap.ArenaAllocator = .init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
+    if (!is_emscripten) {
+        var arena: std.heap.ArenaAllocator = .init(std.heap.page_allocator);
+        defer arena.deinit();
+        const allocator = arena.allocator();
 
-    DEBUG = blk: {
-        const val = std.process.getEnvVarOwned(allocator, "DEBUG") catch |err| switch (err) {
-            error.EnvironmentVariableNotFound => break :blk false,
-            else => return err,
+        DEBUG = blk: {
+            const val = std.process.getEnvVarOwned(allocator, "DEBUG") catch |err| switch (err) {
+                error.EnvironmentVariableNotFound => break :blk false,
+                else => return err,
+            };
+            defer allocator.free(val);
+
+            if (std.mem.eql(u8, val, "1"))
+                break :blk true
+            else
+                break :blk false;
         };
-        defer allocator.free(val);
+    }
 
-        if (std.mem.eql(u8, val, "1"))
-            break :blk true
-        else
-            break :blk false;
-    };
+    if (is_emscripten) {
+        const default_width = 1582;
+        const default_height = 918;
+        rl.initWindow(default_width, default_height, "zetris");
+        screenWidth = default_width;
+        screenHeight = default_height;
+    } else {
+        rl.initWindow(0, 0, "zetris");
+        screenHeight = rl.getScreenHeight() - GENERAL_PADDING;
+        screenWidth = rl.getScreenWidth() - GENERAL_PADDING;
+        rl.setWindowSize(screenWidth, screenHeight);
+        rl.maximizeWindow();
+    }
 
-    rl.initWindow(0, 0, "zetris");
-    screenHeight = rl.getScreenHeight() - GENERAL_PADDING;
-    screenWidth = rl.getScreenWidth() - GENERAL_PADDING;
     const screenWidthF = @as(f32, @floatFromInt(screenWidth));
-
     startY = @divFloor(screenHeight, 6);
     startX = @as(i32, @intFromFloat(@floor(screenWidthF / 2.5)));
 
-    rl.setWindowSize(screenWidth, screenHeight);
-
     defer rl.closeWindow();
-    rl.setTargetFPS(60);
-
-    rl.maximizeWindow();
+    rl.setTargetFPS(120);
     try getNewPiece();
 
     while (!rl.windowShouldClose()) {
@@ -464,11 +518,13 @@ pub fn main() anyerror!void {
 
         if (try CheckIfLost()) {
             board = std.mem.zeroes([NROWS][NCOLS]u8);
+            linesCleared = 0;
         }
         try drawBoard();
         try drawNextPiece();
         try drawReservePiece();
-        try drawActivePiece();
+        try drawLinesCleared();
         try drawShadowPiece();
+        try drawActivePiece();
     }
 }
