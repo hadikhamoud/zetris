@@ -20,7 +20,16 @@ RUN curl -L "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_
 WORKDIR /app
 COPY . .
 
-# Build for Emscripten/WASM
+# Zig's raylib dependency uses zemscripten which runs "emsdk install 4.0.3"
+# from its own cached emsdk copy. That tries to download node-v20.18.0 from
+# Google Cloud Storage which returns 403. Fix: fetch Zig deps first, then
+# pre-populate the node directory in the cached emsdk so it skips the download.
+ENV ZIG_EMSDK_CACHE="/root/.cache/zig/p/N-V-__8AAJl1DwBezhYo_VE6f53mPVm00R-Fk28NPW7P14EQ"
+RUN zig build -Dtarget=wasm32-emscripten -Doptimize=ReleaseSmall --fetch \
+    && mkdir -p "${ZIG_EMSDK_CACHE}/node/20.18.0_64bit/bin" \
+    && ln -s "$(which node)" "${ZIG_EMSDK_CACHE}/node/20.18.0_64bit/bin/node"
+
+# Now the actual build — emsdk will see node as "already installed" and skip download
 RUN zig build -Dtarget=wasm32-emscripten -Doptimize=ReleaseSmall
 
 # ============================================================
