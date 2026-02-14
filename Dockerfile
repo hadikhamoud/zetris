@@ -1,42 +1,26 @@
 # ============================================================
 # Stage 1: Build Zig + Emscripten → WASM
 # ============================================================
-FROM alpine:3.21 AS builder
+# Use the official Emscripten SDK image — has emcc, node, python all pre-installed
+FROM emscripten/emsdk:4.0.9 AS builder
 
 ARG ZIG_VERSION=0.15.2
-ARG EMSDK_VERSION=4.0.9
 
-# Install dependencies (Alpine packages)
-RUN apk add --no-cache \
-    ca-certificates \
-    curl \
-    xz \
-    git \
-    python3 \
-    bash \
-    nodejs \
-    gcompat
+# Install only what's needed for Zig
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    xz-utils \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Zig (note: 0.15+ uses arch-os naming convention)
-# Zig is statically linked so it works on Alpine with gcompat for any libc shims
 RUN curl -L "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz" \
     | tar -xJ -C /opt \
     && ln -s /opt/zig-x86_64-linux-${ZIG_VERSION}/zig /usr/local/bin/zig
-
-# Install Emscripten SDK
-RUN git clone https://github.com/emscripten-core/emsdk.git /opt/emsdk \
-    && cd /opt/emsdk \
-    && ./emsdk install ${EMSDK_VERSION} \
-    && ./emsdk activate ${EMSDK_VERSION}
-
-ENV PATH="/opt/emsdk:/opt/emsdk/upstream/emscripten:${PATH}"
-ENV EMSDK="/opt/emsdk"
 
 # Copy project source
 WORKDIR /app
 COPY . .
 
-# Fetch Zig dependencies and build for Emscripten/WASM
+# Build for Emscripten/WASM
 RUN zig build -Dtarget=wasm32-emscripten -Doptimize=ReleaseSmall
 
 # ============================================================
