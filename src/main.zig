@@ -88,9 +88,9 @@ fn drawBoard() !void {
 }
 
 fn drawReservePiece() !void {
-    const frameOutline = rl.Rectangle.init(@floatFromInt(startX - 350), @floatFromInt(startY), BSIZE * 3, BSIZE * 4);
+    const frameOutline = rl.Rectangle.init(@floatFromInt(startX - 150), @floatFromInt(startY), BSIZE * 3, BSIZE * 4);
     rl.drawRectangleLinesEx(frameOutline, 3.0, rl.Color.gray);
-    rl.drawText("Reserve Piece", startX - 350, startY + BSIZE * 4, 18.0, rl.Color.gray);
+    rl.drawText("Reserve", startX - 250, startY + BSIZE * 4, 18.0, rl.Color.gray);
 
     const rp = reservePiece orelse return;
     const shape = tt.tetrominoes[rp.tType].shape[rp.rotation];
@@ -103,7 +103,7 @@ fn drawReservePiece() !void {
             const col = @as(i32, @intCast(_col));
 
             const square = rl.Rectangle.init(
-                @floatFromInt(startX - 325 + BSIZE_HALF * row),
+                @floatFromInt(startX - 125 + BSIZE_HALF * row),
                 @floatFromInt(startY + 50 + BSIZE_HALF * col),
                 @divFloor(BSIZE, 2),
                 @divFloor(BSIZE, 2),
@@ -116,7 +116,7 @@ fn drawReservePiece() !void {
 fn drawNextPiece() !void {
     const frameOutline = rl.Rectangle.init(@floatFromInt(startX + 350), @floatFromInt(startY), BSIZE * 3, BSIZE * 4);
     rl.drawRectangleLinesEx(frameOutline, 3.0, rl.Color.gray);
-    rl.drawText("Next Piece", startX + 350, startY + BSIZE * 4, 18.0, rl.Color.gray);
+    rl.drawText("Next", startX + 350, startY + BSIZE * 4, 18.0, rl.Color.gray);
 
     if (!hasNextPiece) return;
 
@@ -157,6 +157,15 @@ fn drawLinesCleared() !void {
         18.0,
         rl.Color.gray,
     );
+}
+
+fn drawInstructions() !void {
+    const instructions_y = startY + BSIZE * NROWS + 16;
+    rl.drawText("Move: A/D or Left/Right", startX, instructions_y, 18.0, rl.Color.gray);
+    rl.drawText("Soft Drop: S or Down", startX, instructions_y + 24, 18.0, rl.Color.gray);
+    rl.drawText("Rotate: C (CW), Z (CCW)", startX, instructions_y + 48, 18.0, rl.Color.gray);
+    rl.drawText("Hard Drop: Up", startX, instructions_y + 72, 18.0, rl.Color.gray);
+    rl.drawText("Reserve: Space or X", startX, instructions_y + 96, 18.0, rl.Color.gray);
 }
 
 fn drawActivePiece() !void {
@@ -518,6 +527,10 @@ pub fn main() anyerror!void {
 
     defer rl.closeWindow();
     rl.setTargetFPS(FPS);
+    const fontTexture = try rl.getFontDefault();
+
+    rl.setTextureFilter(fontTexture.texture, rl.TextureFilter.point);
+
     try getNewPiece();
 
     while (!rl.windowShouldClose()) {
@@ -539,6 +552,7 @@ pub fn main() anyerror!void {
             reservePiece = null;
         }
         try drawBoard();
+        try drawInstructions();
         try drawNextPiece();
         try drawReservePiece();
         try drawLinesCleared();
