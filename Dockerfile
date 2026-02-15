@@ -21,16 +21,14 @@ WORKDIR /app
 COPY . .
 
 # Zig's raylib dependency uses zemscripten which runs "emsdk install 4.0.3"
-# from its own cached emsdk copy. That download hits 403 on storage.googleapis.com.
-# Fix: fetch Zig deps first, then symlink the pre-installed emsdk toolchain
-# (from the emscripten/emsdk Docker image) into the Zig cache so emsdk's
-# is_installed() checks pass and it skips all downloads.
+# from this cached emsdk copy. Pre-install it here with retries so the actual
+# build step does not have to fetch toolchain artifacts anymore.
 ENV ZIG_EMSDK_CACHE="/root/.cache/zig/p/N-V-__8AAJl1DwBezhYo_VE6f53mPVm00R-Fk28NPW7P14EQ"
 RUN zig build -Dtarget=wasm32-emscripten -Doptimize=ReleaseSmall --fetch \
-    && mkdir -p "${ZIG_EMSDK_CACHE}/node/20.18.0_64bit/bin" \
-    && ln -s "$(which node)" "${ZIG_EMSDK_CACHE}/node/20.18.0_64bit/bin/node" \
-    && rm -rf "${ZIG_EMSDK_CACHE}/upstream" \
-    && ln -s /emsdk/upstream "${ZIG_EMSDK_CACHE}/upstream"
+    && chmod +x "${ZIG_EMSDK_CACHE}/emsdk" \
+    && i=0; until [ "$i" -ge 5 ]; do "${ZIG_EMSDK_CACHE}/emsdk" install 4.0.3 && break; i=$((i + 1)); echo "emsdk install retry $i/5"; sleep 5; done \
+    && [ "$i" -lt 5 ] \
+    && "${ZIG_EMSDK_CACHE}/emsdk" activate 4.0.3
 
 # Now the actual build — emsdk sees node + upstream as "already installed"
 RUN zig build -Dtarget=wasm32-emscripten -Doptimize=ReleaseSmall
