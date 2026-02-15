@@ -4,6 +4,9 @@ const builtin = @import("builtin");
 const tt = @import("tetrominoes.zig");
 
 const is_emscripten = builtin.os.tag == .emscripten;
+const emscripten = if (is_emscripten) @cImport({
+    @cInclude("emscripten/html5.h");
+}) else struct {};
 
 const GENERAL_PADDING = 0;
 const BSIZE = 30;
@@ -11,6 +14,7 @@ const BSIZE_HALF = @divFloor(BSIZE, 2);
 const NROWS = 20;
 const NCOLS = 10;
 var DEBUG = false;
+const FPS = 60;
 
 var screenHeight: i32 = 0;
 var screenWidth: i32 = 0;
@@ -28,10 +32,19 @@ const fallDelay = 0.15;
 var moveTimer: f32 = 0.0;
 const moveDelay = 0.1;
 var lockPieceDelay = 3;
+var isPaused = false;
 
 var board = std.mem.zeroes([NROWS][NCOLS]u8);
 
 const ActivePiece = struct { tType: u8, rotation: u8, x: i8, y: i8 };
+
+fn updateLayout() void {
+    screenHeight = rl.getScreenHeight() - GENERAL_PADDING;
+    screenWidth = rl.getScreenWidth() - GENERAL_PADDING;
+    const screenWidthF = @as(f32, @floatFromInt(screenWidth));
+    startY = @divFloor(screenHeight, 6);
+    startX = @as(i32, @intFromFloat(@floor(screenWidthF / 2.5)));
+}
 
 fn drawDebugCoords() !void {
     var i: i32 = 0;
@@ -484,31 +497,35 @@ pub fn main() anyerror!void {
     }
 
     if (is_emscripten) {
-        const default_width = 1582;
-        const default_height = 918;
+        var default_width: i32 = 1280;
+        var default_height: i32 = 720;
+        var css_width: f64 = 0;
+        var css_height: f64 = 0;
+        if (emscripten.emscripten_get_element_css_size("#canvas", &css_width, &css_height) == emscripten.EMSCRIPTEN_RESULT_SUCCESS) {
+            if (css_width > 0 and css_height > 0) {
+                default_width = @as(i32, @intFromFloat(css_width));
+                default_height = @as(i32, @intFromFloat(css_height));
+            }
+        }
         rl.initWindow(default_width, default_height, "zetris");
-        screenWidth = default_width;
-        screenHeight = default_height;
     } else {
         rl.initWindow(0, 0, "zetris");
-        screenHeight = rl.getScreenHeight() - GENERAL_PADDING;
-        screenWidth = rl.getScreenWidth() - GENERAL_PADDING;
+        updateLayout();
         rl.setWindowSize(screenWidth, screenHeight);
         rl.maximizeWindow();
     }
-
-    const screenWidthF = @as(f32, @floatFromInt(screenWidth));
-    startY = @divFloor(screenHeight, 6);
-    startX = @as(i32, @intFromFloat(@floor(screenWidthF / 2.5)));
+    updateLayout();
 
     defer rl.closeWindow();
-    rl.setTargetFPS(120);
+    rl.setTargetFPS(FPS);
     try getNewPiece();
 
     while (!rl.windowShouldClose()) {
+        updateLayout();
         rl.beginDrawing();
         defer rl.endDrawing();
         const dt = rl.getFrameTime();
+        if (isPaused) continue;
 
         rl.clearBackground(.white);
         if (DEBUG) try drawDebugCoords();
@@ -519,6 +536,7 @@ pub fn main() anyerror!void {
         if (try CheckIfLost()) {
             board = std.mem.zeroes([NROWS][NCOLS]u8);
             linesCleared = 0;
+            reservePiece = null;
         }
         try drawBoard();
         try drawNextPiece();
