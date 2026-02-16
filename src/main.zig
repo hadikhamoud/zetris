@@ -8,6 +8,10 @@ const emscripten = if (is_emscripten) @cImport({
     @cInclude("emscripten/html5.h");
 }) else struct {};
 
+const rg = @cImport({
+    @cInclude("raygui.h");
+});
+
 const GENERAL_PADDING = 0;
 const BSIZE = 30;
 const BSIZE_HALF = @divFloor(BSIZE, 2);
@@ -166,6 +170,10 @@ fn drawInstructions() !void {
     rl.drawText("Rotate: C (CW), Z (CCW)", startX, instructions_y + 48, 18.0, rl.Color.gray);
     rl.drawText("Hard Drop: Up", startX, instructions_y + 72, 18.0, rl.Color.gray);
     rl.drawText("Reserve: Space or X", startX, instructions_y + 96, 18.0, rl.Color.gray);
+}
+
+fn drawSettingsButton() !void {
+    _ = rg.GuiButton(.{ .x = 100, .y = 100, .width = 200, .height = 40 }, "Click me");
 }
 
 fn drawActivePiece() !void {
@@ -552,6 +560,7 @@ pub fn main() anyerror!void {
             reservePiece = null;
         }
         try drawBoard();
+        try drawSettingsButton();
         try drawInstructions();
         try drawNextPiece();
         try drawReservePiece();
