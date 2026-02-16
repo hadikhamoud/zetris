@@ -91,6 +91,15 @@ fn drawBoard() !void {
     }
 }
 
+fn drawPauseButton() !c_int {
+    const pauseButtonRect: rg.struct_Rectangle = .{ .x = 500, .y = 230, .width = 200, .height = 40 };
+    if (!isPaused) {
+        return rg.GuiButton(pauseButtonRect, "Pause");
+    } else {
+        return rg.GuiButton(pauseButtonRect, "Resume");
+    }
+}
+
 fn drawReservePiece() !void {
     const frameOutline = rl.Rectangle.init(@floatFromInt(startX - 150), @floatFromInt(startY), BSIZE * 3, BSIZE * 4);
     rl.drawRectangleLinesEx(frameOutline, 3.0, rl.Color.gray);
@@ -170,10 +179,7 @@ fn drawInstructions() !void {
     rl.drawText("Rotate: C (CW), Z (CCW)", startX, instructions_y + 48, 18.0, rl.Color.gray);
     rl.drawText("Hard Drop: Up", startX, instructions_y + 72, 18.0, rl.Color.gray);
     rl.drawText("Reserve: Space or X", startX, instructions_y + 96, 18.0, rl.Color.gray);
-}
-
-fn drawSettingsButton() !void {
-    _ = rg.GuiButton(.{ .x = 100, .y = 100, .width = 200, .height = 40 }, "Click me");
+    rl.drawText("Pause: P", startX, instructions_y + 120, 18.0, rl.Color.gray);
 }
 
 fn drawActivePiece() !void {
@@ -546,6 +552,9 @@ pub fn main() anyerror!void {
         rl.beginDrawing();
         defer rl.endDrawing();
         const dt = rl.getFrameTime();
+
+        if (try drawPauseButton() == 1) isPaused = !isPaused;
+
         if (isPaused) continue;
 
         rl.clearBackground(.white);
@@ -560,7 +569,6 @@ pub fn main() anyerror!void {
             reservePiece = null;
         }
         try drawBoard();
-        try drawSettingsButton();
         try drawInstructions();
         try drawNextPiece();
         try drawReservePiece();
