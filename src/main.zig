@@ -92,7 +92,7 @@ fn drawBoard() !void {
 }
 
 fn drawPauseButton() !c_int {
-    const pauseButtonRect: rg.struct_Rectangle = .{ .x = 500, .y = 230, .width = 200, .height = 40 };
+    const pauseButtonRect: rg.struct_Rectangle = .{ .x = 200, .y = 230, .width = 200, .height = 40 };
     if (!isPaused) {
         return rg.GuiButton(pauseButtonRect, "Pause");
     } else {
