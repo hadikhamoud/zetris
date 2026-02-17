@@ -103,7 +103,7 @@ fn drawPauseButton() !c_int {
 fn drawReservePiece() !void {
     const frameOutline = rl.Rectangle.init(@floatFromInt(startX - 150), @floatFromInt(startY), BSIZE * 3, BSIZE * 4);
     rl.drawRectangleLinesEx(frameOutline, 3.0, rl.Color.gray);
-    rl.drawText("Reserve", startX - 250, startY + BSIZE * 4, 18.0, rl.Color.gray);
+    rl.drawText("Reserve", startX - 150, startY + BSIZE * 4, 18.0, rl.Color.gray);
 
     const rp = reservePiece orelse return;
     const shape = tt.tetrominoes[rp.tType].shape[rp.rotation];
