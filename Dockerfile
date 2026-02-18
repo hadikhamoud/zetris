@@ -13,6 +13,14 @@ RUN zig build --fetch
 
 RUN python3 scripts/patch_zemscripten.py
 
+RUN set -eux; \
+    for d in /root/.cache/zig/p/N-V-*; do \
+        if [ -f "$d/emsdk" ]; then \
+            rm -rf "$d"; \
+            ln -s /emsdk "$d"; \
+        fi; \
+    done
+
 RUN zig build -Dtarget=wasm32-emscripten -Doptimize=ReleaseSmall
 
 FROM nginx:alpine AS runtime
