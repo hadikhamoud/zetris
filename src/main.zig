@@ -32,7 +32,8 @@ var reservePiece: ?ActivePiece = null;
 var linesCleared: u32 = 0;
 var reserveUsed = false;
 var fallTimer: f32 = 0.0;
-const fallDelay = 0.15;
+var level: c_int = 1;
+var fallDelay: f32 = 0.5;
 var moveTimer: f32 = 0.0;
 const moveDelay = 0.1;
 var lockPieceDelay = 3;
@@ -91,11 +92,29 @@ fn drawBoard() !void {
     }
 }
 
+fn levelToFallDelay(lvl: c_int) f32 {
+    const t: f32 = @as(f32, @floatFromInt(lvl - 1)) / 14.0;
+    return 0.5 - t * (0.5 - 0.05);
+}
+
 fn drawPauseButton() !c_int {
     const pauseButtonRect: rg.struct_Rectangle = .{ .x = 200, .y = 230, .width = 200, .height = 40 };
     if (!isPaused) {
         return rg.GuiButton(pauseButtonRect, "Pause");
     } else {
+        const boxW: f32 = 500;
+        const boxH: f32 = 500;
+        const boxX: f32 = @floatFromInt(@divExact(screenWidth - 500, 2));
+        const boxY: f32 = @floatFromInt(@divExact(screenHeight - 500, 2));
+        _ = rg.GuiWindowBox(.{ .x = boxX, .y = boxY, .width = boxW, .height = boxH }, "");
+
+        const spinnerW: f32 = 200;
+        const spinnerH: f32 = 40;
+        const spinnerX: f32 = boxX + (boxW - spinnerW) / 2.0;
+        const spinnerY: f32 = boxY + (boxH - spinnerH) / 2.0;
+        _ = rg.GuiSpinner(.{ .x = spinnerX, .y = spinnerY, .width = spinnerW, .height = spinnerH }, "Level", &level, 1, 15, false);
+        fallDelay = levelToFallDelay(level);
+
         return rg.GuiButton(pauseButtonRect, "Resume");
     }
 }
