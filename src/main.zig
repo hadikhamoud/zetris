@@ -106,7 +106,9 @@ fn drawPauseButton() !c_int {
         const boxH: f32 = 500;
         const boxX: f32 = @floatFromInt(@divExact(screenWidth - 500, 2));
         const boxY: f32 = @floatFromInt(@divExact(screenHeight - 500, 2));
-        _ = rg.GuiWindowBox(.{ .x = boxX, .y = boxY, .width = boxW, .height = boxH }, "");
+        const windowBox = rg.GuiWindowBox(.{ .x = boxX, .y = boxY, .width = boxW, .height = boxH }, "");
+        std.debug.print("{d}", .{windowBox});
+        if (windowBox == 1) isPaused = false;
 
         const spinnerW: f32 = 200;
         const spinnerH: f32 = 40;
