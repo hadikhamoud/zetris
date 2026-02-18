@@ -1,6 +1,7 @@
 FROM emscripten/emsdk:4.0.9 AS builder
 
 ARG ZIG_VERSION=0.15.2
+ARG EMSDK_VERSION=4.0.9
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     xz-utils \
@@ -13,12 +14,13 @@ RUN curl -L "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_
 WORKDIR /app
 COPY . .
 
-ENV ZIG_EMSDK_CACHE="/root/.cache/zig/p/N-V-__8AAJl1DwBezhYo_VE6f53mPVm00R-Fk28NPW7P14EQ"
 RUN zig build -Dtarget=wasm32-emscripten -Doptimize=ReleaseSmall --fetch \
-    && chmod +x "${ZIG_EMSDK_CACHE}/emsdk" \
-    && i=0; until [ "$i" -ge 5 ]; do "${ZIG_EMSDK_CACHE}/emsdk" install 4.0.3 && break; i=$((i + 1)); echo "emsdk install retry $i/5"; sleep 5; done \
+    && for f in /root/.cache/zig/p/zemscripten-*/build.zig; do sed -i "s/pub const emsdk_ver_tiny = \"3\";/pub const emsdk_ver_tiny = \"9\";/" "$f"; done \
+    && set -- /root/.cache/zig/p/N-V-*/emsdk \
+    && chmod +x "$1" \
+    && i=0; until [ "$i" -ge 5 ]; do "$1" install "${EMSDK_VERSION}" && break; i=$((i + 1)); echo "emsdk install retry $i/5"; sleep 5; done \
     && [ "$i" -lt 5 ] \
-    && "${ZIG_EMSDK_CACHE}/emsdk" activate 4.0.3
+    && "$1" activate "${EMSDK_VERSION}"
 
 RUN zig build -Dtarget=wasm32-emscripten -Doptimize=ReleaseSmall
 
