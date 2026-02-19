@@ -107,7 +107,6 @@ fn drawPauseButton() !c_int {
         const boxX: f32 = @floatFromInt(@divExact(screenWidth - 500, 2));
         const boxY: f32 = @floatFromInt(@divExact(screenHeight - 500, 2));
         const windowBox = rg.GuiWindowBox(.{ .x = boxX, .y = boxY, .width = boxW, .height = boxH }, "");
-        std.debug.print("{d}", .{windowBox});
         if (windowBox == 1) isPaused = false;
 
         const spinnerW: f32 = 200;
@@ -500,6 +499,9 @@ fn handleInput(dt: f32) !void {
             rl.KeyboardKey.space, rl.KeyboardKey.x => {
                 try ReservePiece();
                 moveTimer = 0;
+            },
+            rl.KeyboardKey.p => {
+                isPaused = !isPaused;
             },
 
             else => {},
