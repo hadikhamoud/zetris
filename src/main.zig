@@ -596,7 +596,7 @@ pub fn main() anyerror!void {
         try drawNextPiece();
         try drawReservePiece();
         try drawLinesCleared();
-        try drawShadowPiece();
         try drawActivePiece();
+        try drawShadowPiece();
     }
 }
