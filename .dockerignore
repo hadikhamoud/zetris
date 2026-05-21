@@ -6,4 +6,5 @@ debug
 build
 build-*
 docgen_tmp
+docgen
 *.md
